@@ -4,8 +4,17 @@ import React, { useState, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { Upload, Image, X } from 'lucide-react'
+import { Upload, Image, X, Router } from 'lucide-react'
 import LoadingOverlay from './LoadingOverlay'
+import { useAuth } from '@clerk/nextjs'
+import { toast } from 'sonner'
+import { checkBookExists, createBook, saveBookSegments } from '@/lib/actions/book.action'
+import { Form } from './ui/form'
+import { useRouter } from 'next/navigation'
+import { parsePDFFile } from '@/lib/utils'
+import { upload } from '@vercel/blob/client'
+import { UploadSchema } from '@/lib/zod'
+import { BookUploadFormValues } from '@/database/models/types'
 
 // Define validation schema
 const bookUploadSchema = z.object({
@@ -38,6 +47,9 @@ const UploadForm = () => {
   const [coverImage, setCoverImage] = useState<File | null>(null)
   const pdfInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+
+  const {userId} = useAuth()
 
   const {
     control,
@@ -46,6 +58,7 @@ const UploadForm = () => {
     formState: { errors },
     watch,
     setValue,
+    
   } = useForm<BookUploadFormData>({
     resolver: zodResolver(bookUploadSchema),
     defaultValues: {
@@ -55,6 +68,16 @@ const UploadForm = () => {
     } as any,
   })
 
+  const form = useForm<BookUploadFormValues>({
+        resolver: zodResolver(UploadSchema),
+        defaultValues: {
+            title: '',
+            author: '',
+            persona: '',
+            pdfFile: undefined,
+            coverImage: undefined,
+        },
+    });
   const selectedVoice = watch('voice')
 
   const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,35 +113,106 @@ const UploadForm = () => {
   }
 
   const onSubmit = async (data: BookUploadFormData) => {
+    if(!userId){
+      return toast.error('You must be logged in to upload a book')
+    }
     setIsLoading(true)
-    try {
-      // Simulate API call
-      const formData = new FormData()
-      formData.append('pdfFile', data.pdfFile)
-      if (data.coverImage) {
-        formData.append('coverImage', data.coverImage)
-      }
-      formData.append('title', data.title)
-      formData.append('author', data.author)
-      formData.append('voice', data.voice)
 
-      // Replace with actual API endpoint
-      const response = await fetch('/api/books/upload', {
-        method: 'POST',
-        body: formData,
+    try {
+      const existsCheck = await checkBookExists(data.title)
+      if(existsCheck.error){
+        toast.error('Failed to check if book exists. Please try again.')
+        setIsLoading(false)
+        return
+      }
+      if(existsCheck.exists && existsCheck.book){
+        toast.error('A book with this title already exists. Please choose a different title.')
+        form.reset()
+        router.push(`/books/${existsCheck.book.slug}`)
+        return
+      }
+      const fileTitle = data.title.replace(/\s+/g, '-').toLowerCase() // Replace spaces with hyphens
+      const pdfFile = data.pdfFile
+
+
+   
+      
+      const parsedPDF = await parsePDFFile(pdfFile)
+      if(parsedPDF.content.length === 0){
+        toast.error('Failed to parse PDF file. Please make sure the file is a valid PDF and try again.')
+        setIsLoading(false)
+        return
+      }
+
+      const  uploadPdfBlob = await upload(fileTitle, pdfFile, {
+        access: 'public',
+        handleUploadUrl:'/api/upload',
+        contentType: 'application/pdf'
+      }
+
+      )
+
+      let coverUrl = ''
+
+      if(data.coverImage){
+        const coverFile = data.coverImage
+        const uploadCoverBlob = await upload(`${fileTitle}_cover.png`, coverFile, {
+          access: 'public',
+          handleUploadUrl:'/api/upload',
+          contentType: coverFile.type
+        })
+        coverUrl = uploadCoverBlob.url
+      }else {
+        const reponse = await fetch(parsedPDF.cover)
+        const blob = await reponse.blob()
+        const uploadedCoverBlob = await upload(`${fileTitle}_cover.png`, blob, {
+          access: 'public',
+          handleUploadUrl:'/api/upload',
+          contentType: blob.type
+        })
+        coverUrl = uploadedCoverBlob.url
+      }
+
+      const book = await createBook({
+        clerkId: userId,
+        title: data.title, 
+        author: data.author,
+        persona: data.voice,
+        fileURL: uploadPdfBlob.url,
+        fileBlobKey: uploadPdfBlob.pathname,
+        coverURL: coverUrl ,
+        fileSize: pdfFile.size,
       })
 
-      if (!response.ok) {
-        throw new Error('Upload failed')
+      if(!book.success) {
+        toast.error(book.error || 'Failed to create a new book')
+        setIsLoading(false)
+        return
       }
 
-      // Success handling
-      console.log('Book uploaded successfully')
+      if(book.alreadyExists){
+        toast.error('A book with this title already exists. Please choose a different title.')
+        form.reset()
+        router.push(`/books/${book.data.slug}`)
+        return
+      }
+      const segments = await saveBookSegments(book.data.id, userId, parsedPDF.content)
+
+      if(!segments.success) {
+        toast.error(segments.error || 'Failed to save book segments')
+        setIsLoading(false)
+        return
+      }
+
+        form.reset()
+        router.push(`/`)
     } catch (error) {
-      console.error('Upload error:', error)
+      console.log('Error uploading book:', error)
+      toast.error('Failed to upload book')
     } finally {
       setIsLoading(false)
     }
+  
   }
 
   return (
@@ -134,6 +228,7 @@ const UploadForm = () => {
               accept=".pdf"
               onChange={handlePdfChange}
               className="hidden"
+              disabled={isLoading}
             />
             <div
               onClick={() => pdfInputRef.current?.click()}

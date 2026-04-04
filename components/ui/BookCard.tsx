@@ -9,7 +9,7 @@ const BookCard = ({title, author,coverURL,slug} : BookCardProps) => {
   return (
     <div>
         <Link href={`/book/${slug}`}>
-                <article className='book-card'>
+                <article className='book-card pt-10'>
                     <figure className='book-card-figure'>
                                 <div className='book-card-cover-wrapper'>
                                     <Image src={coverURL} alt={title} width={133} height={200} className='book-card-cover'/>

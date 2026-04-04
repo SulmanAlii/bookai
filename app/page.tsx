@@ -1,10 +1,16 @@
 import BookCard from "@/components/ui/BookCard";
 import HeroSection from "@/components/ui/HeroSection";
 import Navbar from "@/components/ui/Navbar";
+import { getAllBooks } from "@/lib/actions/book.action";
 import { sampleBooks } from "@/lib/constants";
 import Image from "next/image";
 
-export default function Home() {
+export default async function Home() {
+
+  const bookresults = await getAllBooks();
+  console.log('Books from DB:', bookresults);
+  const books = bookresults.success ? bookresults.data ?? [] : [];
+
   return (
     <div >
       <Navbar/>
@@ -13,7 +19,7 @@ export default function Home() {
       
       <HeroSection />
       <div className="library-books-grid">
-        {sampleBooks.map(book => (
+        {books.map(book => (
           <BookCard 
           key={book._id} 
           title={book.title} 
