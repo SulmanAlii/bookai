@@ -4,24 +4,16 @@ import { useEffect, useState, use } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { getBookBySlug } from '@/lib/actions/book.action';
-import { ArrowLeft, Mic, MicOff } from 'lucide-react';
+import { IBook } from '@/database/models/types';
+import { ArrowLeft } from 'lucide-react';
 import VapiControls from '@/components/VapiControls';
-
-interface BookData {
-  _id: string;
-  title: string;
-  author: string;
-  coverURL: string;
-  persona?: string;
-  slug: string;
-}
+import { getBookBySlug } from '@/lib/actions/book.action';
 
 export default function BookPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const router = useRouter();
   const { isLoaded, userId } = useAuth();
-  const [book, setBook] = useState<BookData | null>(null);
+  const [book, setBook] = useState<IBook | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -37,7 +29,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
       try {
         const result = await getBookBySlug(slug);
         if (result.success && result.data) {
-          setBook(result.data as BookData);
+          setBook(result.data as IBook);
         } else {
           setError(true);
           router.push('/');
@@ -82,6 +74,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
       {/* Main Container - Stack vertically, centered with max-w-4xl */}
       <div className="mx-auto max-w-4xl px-6 py-20">
         {/* Header Card */}
+
       
         {/* Transcript Area */}
         <VapiControls book={book}/>

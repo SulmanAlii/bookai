@@ -235,7 +235,7 @@ export function useVapi(book: IBook) {
 
         try {
             // Check session limits and create session record
-            const result = await startVoiceSession(userId, book._id);
+            const result = await startVoiceSession(userId, book._id.toString());
 
             if (!result.success) {
                 setLimitError(result.error || 'Session limit reached. Please upgrade your plan.');
@@ -268,6 +268,10 @@ export function useVapi(book: IBook) {
             });
         } catch (err) {
             console.error('Failed to start call:', err);
+            if(sessionIdRef.current){
+                endVoiceSession(sessionIdRef.current,0).catch(endErr => console.error('Failed to rollback voice session after start failure:', endErr),);
+                sessionIdRef.current = null; 
+            }
             setStatus('idle');
             setLimitError('Failed to start voice session. Please try again.');
         }
