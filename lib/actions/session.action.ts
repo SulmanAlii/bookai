@@ -29,7 +29,6 @@ const { getUserPlan } = await import("@/lib/subscription.server");
             return {
                 success: false,
                 error: `You have reached the monthly session limit for your ${plan} plan (${limits.maxSessionsPerMonth}). Please upgrade for more sessions.`,
-                isBillingError: true,
             };
         }
 
