@@ -49,6 +49,22 @@ export interface IVoiceSession extends Document {
     updatedAt: Date;
 }
 
+export interface Messages {
+    role: string;
+    content: string;
+}
+
+export interface StartSessionResult {
+    success: boolean;
+    sessionId?: string;
+    error?: string;
+}
+
+export interface EndSessionResult {
+    success: boolean;
+    error?: string;
+}
+
 // ============================================
 // FORM & INPUT TYPES
 // ============================================
@@ -115,4 +131,22 @@ export interface FileUploadFieldProps<T extends FieldValues> {
     icon: LucideIcon;
     placeholder: string;
     hint: string;
+}
+
+
+interface SessionCheckResult {
+    allowed : boolean;
+    currentCount: number;
+    limit: number;
+    plan : PlanType;
+    maxDurationMinutes: number;
+    error?: string;
+
+}
+
+interface StartSessionResult {
+    success: boolean;
+    sessionId?: string;
+    maxDurationMinutes?: number;
+    error?: string;
 }

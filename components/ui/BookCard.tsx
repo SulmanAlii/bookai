@@ -8,7 +8,7 @@ import React from 'react'
 const BookCard = ({title, author,coverURL,slug} : BookCardProps) => {
   return (
     <div>
-        <Link href={`/book/${slug}`}>
+        <Link href={`/books/${slug}`}>
                 <article className='book-card pt-10'>
                     <figure className='book-card-figure'>
                                 <div className='book-card-cover-wrapper'>
