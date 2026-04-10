@@ -5,10 +5,11 @@ import { getAllBooks } from "@/lib/actions/book.action";
 import { sampleBooks } from "@/lib/constants";
 import Image from "next/image";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
 
   const bookresults = await getAllBooks();
-  console.log('Books from DB:', bookresults);
   const books = bookresults.success ? bookresults.data ?? [] : [];
 
   return (

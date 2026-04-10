@@ -8,7 +8,7 @@ import { string, success } from "zod";
 import BookSegment from "@/database/models/book-segment-model";
 import { BookDownIcon } from "lucide-react";
 
-
+import { revalidatePath } from "next/cache";
 
 export const getAllBooks = async () =>  {
     try {
@@ -71,6 +71,7 @@ export const createBook = async (data:CreateBook) => {
         }
         
         const book = await Book.create({...data, slug, totalSegments: 0});
+            revalidatePath('/');
         return {
             success: true,
             data: serializeData(book),
